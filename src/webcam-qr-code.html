@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>USB-Kamera mit QR-Code-Erkennung</title>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.js"></script>
+    <style>
+        #video {
+            width: 640px;
+            height: 480px;
+        }
+        #qrResult {
+            margin-top: 20px;
+            font-size: 20px;
+            color: green;
+        }
+    </style>
+</head>
+<body>
+    <select id="cameraSelect"></select>
+    <video id="video" autoplay></video>
+    <canvas id="canvas" style="display:none;"></canvas>
+    <div id="qrResult">
+        QR-Code Inhalt wird hier angezeigt:
+        
+    </div>
+    <script>
+        async function getCameras() {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const videoDevices = devices.filter(device => device.kind === 'videoinput');
+            const cameraSelect = document.getElementById('cameraSelect');
+
+            videoDevices.forEach(device => {
+                const option = document.createElement('option');
+                option.value = device.deviceId;
+                option.text = device.label || `Kamera ${cameraSelect.length + 1}`;
+                cameraSelect.appendChild(option);
+            });
+
+            cameraSelect.onchange = () => {
+                const video = document.getElementById('video');
+                const selectedDeviceId = cameraSelect.value;
+                navigator.mediaDevices.getUserMedia({
+                    video: { deviceId: { exact: selectedDeviceId } }
+                }).then(stream => {
+                    video.srcObject = stream;
+                    scanQRCode();
+                }).catch(error => {
+                    console.error("Fehler beim Zugriff auf die Kamera: ", error);
+                });
+            };
+        }
+
+        function scanQRCode() {
+            const video = document.getElementById('video');
+            const canvas = document.getElementById('canvas');
+            const qrResult = document.getElementById('qrResult');
+            const context = canvas.getContext('2d');
+
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+
+            function tick() {
+                if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+                    const code = jsQR(imageData.data, imageData.width, imageData.height);
+
+                    if (code) {
+                        qrResult.textContent = `QR-Code Inhalt: ${code.data}`;
+                    } else {
+                        qrResult.textContent = 'Kein QR-Code erkannt.';
+                    }
+                }
+                requestAnimationFrame(tick);
+            }
+
+            tick();
+        }
+
+        getCameras();
+    </script>
+</body>
+</html>

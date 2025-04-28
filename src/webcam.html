@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Kameraauswahl</title>
+</head>
+<body>
+    <select id="cameraSelect"></select>
+    <video id="video" width="640" height="480" autoplay></video>
+    <script>
+        async function getCameras() {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const videoDevices = devices.filter(device => device.kind === 'videoinput');
+            const cameraSelect = document.getElementById('cameraSelect');
+
+            videoDevices.forEach(device => {
+                const option = document.createElement('option');
+                option.value = device.deviceId;
+                option.text = device.label || `Kamera ${cameraSelect.length + 1}`;
+                cameraSelect.appendChild(option);
+            });
+
+            cameraSelect.onchange = () => {
+                const video = document.getElementById('video');
+                const selectedDeviceId = cameraSelect.value;
+                navigator.mediaDevices.getUserMedia({
+                    video: { deviceId: { exact: selectedDeviceId } }
+                }).then(stream => {
+                    video.srcObject = stream;
+                }).catch(error => {
+                    console.error("Fehler beim Zugriff auf die Kamera: ", error);
+                });
+            };
+        }
+
+        getCameras();
+    </script>
+</body>
+</html>
